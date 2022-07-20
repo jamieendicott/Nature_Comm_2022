@@ -1,0 +1,30 @@
+#profiling cpg contexts
+library(GenomicRanges)
+library(BSgenome.Hsapiens.UCSC.hg19)  
+
+#download complete manifest
+download.file('https://zhouserver.research.chop.edu/InfiniumAnnotation/20180909/EPIC/EPIC.hg19.manifest.tsv.gz','./man.hg19.tsv.gz')
+hg19.man<-read.delim('man.hg19.tsv.gz',stringsAsFactors=FALSE)
+##removing all CGI probes
+EPIC.nonCGI<-subset(hg19.man,is.na(gene)) #159497
+##simplify
+EPIC.nonCGI<-EPIC.nonCGI[,c(1:3,5,15)] 
+dim(EPIC.nonCGI)
+#[1] 159497      5
+
+g<-GRanges(seqnames = EPIC.nonCGI$CpG_chrm,
+  ranges = IRanges(start = EPIC.nonCGI$CpG_beg,
+    end = EPIC.nonCGI$CpG_end,
+    names = EPIC.nonCGI$probeID))
+g$names <- EPIC.nonCGI$probeID
+
+
+PMD_coordinates_hg19.bed <- read.delim("PMD_coordinates_hg19.bed.gz", header=FALSE, stringsAsFactors=FALSE)
+PMD<-subset(PMD_coordinates_hg19.bed,PMD_coordinates_hg19.bed$V6=='commonPMD') #13127 PMDs
+PMD.g<-GRanges(seqnames = PMD$V1,
+  ranges=IRanges(start=PMD$V2,
+  end=PMD$V3))
+HMD<-subset(PMD_coordinates_hg19.bed,PMD_coordinates_hg19.bed$V6=='commonHMD') #7089 HMDs
+HMD.g<-GRanges(seqnames = HMD$V1,
+  ranges=IRanges(start=HMD$V2,
+  end=HMD$V3))
