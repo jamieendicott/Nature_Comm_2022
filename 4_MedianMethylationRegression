@@ -2,12 +2,15 @@ library(ggplot2)
 
 #download manifest of PMD solo-WCGWs
 download.file('https://zwdzwd.s3.amazonaws.com/pmd/EPIC.comPMD.probes.tsv','./EPIC.comPMD.probes.tsv')
+EPIC.comPMD<-read.delim('EPIC.comPMD.probes.tsv',header=F)
 
-betas<-read.csv('Baseline profiling soloWCGW.betas.csv',check.names=F,row.names=1) 
-samples<-read.csv('compiled.samples.batches.csv')
+betas<-read.csv('processed.betas.csv',check.names=F,row.names=1) 
+#subset betas to only PMD solo-WCGWs
+b<-subset(betas,rownames(betas)%in%EPIC.comPMD$V4)
+samples<-read.csv('samples.csv')
 samples<-subset(samples,samples$Experiment=="Baseline profiling")
-betas<-betas[,c(match(samples$EPIC.ID,colnames(betas)))]
-samples$med<-apply(betas,2,median,na.rm=T)
+b<-b[,c(match(samples$EPIC.ID,colnames()))]
+samples$med<-apply(b,2,median,na.rm=T)
 
 cols<-c(AG21837="coral",AG06561="brown",
         AG11182="plum4",AG11546="darkseagreen4",
