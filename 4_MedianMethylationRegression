@@ -1,5 +1,8 @@
 library(ggplot2)
 
+#download manifest of PMD solo-WCGWs
+download.file('https://zwdzwd.s3.amazonaws.com/pmd/EPIC.comPMD.probes.tsv','./EPIC.comPMD.probes.tsv')
+
 betas<-read.csv('Baseline profiling soloWCGW.betas.csv',check.names=F,row.names=1) 
 samples<-read.csv('compiled.samples.batches.csv')
 samples<-subset(samples,samples$Experiment=="Baseline profiling")
