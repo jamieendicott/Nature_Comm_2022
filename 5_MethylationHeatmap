@@ -1,0 +1,24 @@
+#Heatmap of AG21859 PMD solo-WCGWs, showing reproducibility between replicates/subcultures 
+library(pheatmap)
+library(viridisLite)
+
+s<-subset(samples,samples$Coriell.ID=="AG21859")
+#sort by subculture then PDs
+s<-s[order( s[,4], s[,5] ),]
+#move first timepoint to first row
+s2<-rbind(s[40,],s[-40,])
+#one sample has many more (2x+) NAs than others, remove
+s2<-s2[-39,]
+b<-betas[,c(match(s2$EPIC.ID,colnames(betas)))]
+#b<-na.omit(b)
+b2<-b[order(b[,1],decreasing = TRUE),]
+
+p<-pheatmap(b3,cluster_cols = F, cluster_rows =F,
+         show_rownames = F, show_colnames = F,
+         gaps_col = c(14,26),
+         color=turbo(100)
+)
+
+pdf('hm.AG21859.subs.pdf')
+p
+dev.off()
