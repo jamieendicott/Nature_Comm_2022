@@ -1,0 +1,39 @@
+man<-read.table('EPICnonCGI.context.manifest.tsv') 
+
+PMD.SCGS.social<-subset(man,man$PMD==TRUE & man$SCGS==TRUE & man$type=='social') #7418
+PMD.SCGS.social$class<-'PMD.SCGS.social'
+HMD.SCGS.social<-subset(man,man$HMD==TRUE & man$SCGS==TRUE & man$type=='social') #4691
+HMD.SCGS.social$class<-'HMD.SCGS.social'
+PMD.SCGW.social<-subset(man,man$PMD==TRUE & man$SCGW==TRUE & man$type=='social') #4566
+PMD.SCGW.social$class<-'PMD.SCGW.social'
+HMD.SCGW.social<-subset(man,man$HMD==TRUE & man$SCGW==TRUE & man$type=='social') #2900
+HMD.SCGW.social$class<-'HMD.SCGW.social'
+PMD.WCGW.social<-subset(man,man$PMD==TRUE & man$WCGW==TRUE & man$type=='social') #2804
+PMD.WCGW.social$class<-'PMD.WCGW.social'
+HMD.WCGW.social<-subset(man,man$HMD==TRUE & man$WCGW==TRUE & man$type=='social') #1804
+HMD.WCGW.social$class<-'HMD.WCGW.social'
+
+PMD.SCGS.solo<-subset(man,man$PMD==TRUE & man$SCGS==TRUE & man$type=='solo') #4470
+PMD.SCGS.solo$class<-'PMD.SCGS.solo'
+HMD.SCGS.solo<-subset(man,man$HMD==TRUE & man$SCGS==TRUE & man$type=='solo') #3103
+HMD.SCGS.solo$class<-'HMD.SCGS.solo'
+PMD.SCGW.solo<-subset(man,man$PMD==TRUE & man$SCGW==TRUE & man$type=='solo') #5939
+PMD.SCGW.solo$class<-'PMD.SCGW.solo'
+HMD.SCGW.solo<-subset(man,man$HMD==TRUE & man$SCGW==TRUE & man$type=='solo') #3796
+HMD.SCGW.solo$class<-'HMD.SCGW.solo'
+PMD.WCGW.solo<-subset(man,man$PMD==TRUE & man$WCGW==TRUE & man$type=='solo') #8356
+PMD.WCGW.solo$class<-'PMD.WCGW.solo'
+HMD.WCGW.solo<-subset(man,man$HMD==TRUE & man$WCGW==TRUE & man$type=='solo') #5068
+HMD.WCGW.solo$class<-'HMD.WCGW.solo'
+
+all<-rbind(PMD.SCGS.social,HMD.SCGS.social,
+           PMD.SCGW.social,HMD.SCGW.social,
+           PMD.WCGW.social,HMD.WCGW.social,
+           PMD.SCGS.solo,HMD.SCGS.solo,
+           PMD.SCGW.solo,HMD.SCGW.solo,
+           PMD.WCGW.solo,HMD.WCGW.solo)
+
+name<-'HMD.WCGW.solo'
+d<-subset(all,all$class==name)
+db<-subset(betas,rownames(betas)%in%d$probeID)
+samples$HMD.WCGW.solo<-apply(db,2,median)
