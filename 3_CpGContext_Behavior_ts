@@ -32,6 +32,14 @@ all<-rbind(PMD.SCGS.social,HMD.SCGS.social,
            PMD.SCGS.solo,HMD.SCGS.solo,
            PMD.SCGW.solo,HMD.SCGW.solo,
            PMD.WCGW.solo,HMD.WCGW.solo)
+           
+for (i in names) {
+  name<-names[i]
+  d<-subset(all,all$class==name)
+  db<-subset(delta,rownames(delta)%in%d$probeID)
+  med <- apply(db,2,median,na.rm=T)
+  assign(paste0(names[i],'.med'),med)
+} 
 
 name<-'HMD.WCGW.solo'
 d<-subset(all,all$class==name)
