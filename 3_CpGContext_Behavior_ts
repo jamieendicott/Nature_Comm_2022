@@ -45,3 +45,27 @@ name<-'HMD.WCGW.solo'
 d<-subset(all,all$class==name)
 db<-subset(betas,rownames(betas)%in%d$probeID)
 samples$HMD.WCGW.solo<-apply(db,2,median)
+
+median.PDL<-median.betas[,c(2,4:15)]
+median.PDL<-melt(median.PDL,id='Total.PDL')
+median.PDL$Total.PDL<-as.numeric(median.PDL$Total.PDL)
+median.PDL$value<-as.numeric(median.PDL$value)
+median.PDL$variable<-as.factor(median.PDL$variable)
+c<-median.PDL
+c$CpG.context<-c(rep('social',162),rep('solo',162))
+c$PMDvHMD<-c(rep('PMD',27),rep('HMD',27),rep('PMD',27),rep('HMD',27),rep('PMD',27),rep('HMD',27),rep('PMD',27),rep('HMD',27),rep('PMD',27),rep('HMD',27),rep('PMD',27),rep('HMD',27))
+
+g<-ggplot(data=c,aes(x=Total.PDL,y=value,col=variable))
+pdf('AG21839.noCGI.delta.PMDvHMD.pdf') #also made one with methylation
+g+geom_point()+stat_smooth(geom='line',alpha=0.4,method='lm')+
+  theme_classic()+xlab('Total PDL in Culture')+
+  facet_wrap(~PMDvHMD)+
+  ylab('Delta median methylation')+
+  scale_color_manual(values = c('firebrick','firebrick',
+                                'aquamarine4','aquamarine4',
+                                'skyblue4','skyblue4',
+                                'firebrick1','firebrick1',
+                                'aquamarine2','aquamarine2',
+                                'skyblue1','skyblue1'))
+  
+dev.off()
