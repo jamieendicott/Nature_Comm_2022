@@ -27,7 +27,7 @@ MMC.PDL<-ggplot(data=s2,aes(x=Total.PDL,y=med))+geom_smooth(method='lm',alpha=0.
                                                                           "AG11182" = "Adult Vascular Endothelial Cell \nAG11182",
                                                                           "AG11546" = "Adult Vascular Smooth Muscle Cell \nAG11546")))+
   theme(strip.text.x = element_text(size = 7.5))
-pdf('MMC.PDL.global.pdf')
+pdf('MMC.PDL.pdf')
 MMC.PDL
 dev.off()
 
@@ -48,6 +48,8 @@ MMC.days<-ggplot(data=s2,aes(x=Days.in.culture,y=med,col=Agent))+geom_point(alph
                                                                              "AG11182" = "Adult Vascular Endothelial Cell \nAG11182",
                                                                              "AG11546" = "Adult Vascular Smooth Muscle Cell \nAG11546")))+
   theme(strip.text.x = element_text(size = 7.5))
+
+
 
 MMC.growthcurve<-ggplot(data=s2,aes(y=Total.PDL,x=Days.in.culture,col=Agent))+
   geom_point(alpha=0.6)+theme_classic()+scale_color_manual(name="Condition",values=c(control='maroon',MMC='steelblue4'))+
