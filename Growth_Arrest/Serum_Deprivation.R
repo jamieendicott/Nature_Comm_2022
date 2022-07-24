@@ -28,5 +28,11 @@ serumwd.gc<-ggplot(data=s,aes(y=Total.PDL,x=Days.in.culture,col=Culture.conditio
   geom_point(alpha=0.6)+theme_classic()+
   scale_color_manual(name="% Serum",values=c('0.50%'="deeppink4",'1%'="tomato3",'5%'="darkorange3",'15%'="goldenrod2"))+
   labs(x="Days in Culture",y="Population Doublings")+geom_line(stat="smooth", method="lm",alpha=0.4)
-  
 
+
+samples$m.med<-BetaValueToMValue(samples$med)
+samples$condition<-as.factor(samples$Culture.condition..FBS)
+s<-samples
+res<-lmer(data=s,m.med ~ Days.in.culture+condition+(1|condition),REML = FALSE)
+anova(res)
+summary(glht(res,mcp(condition="Tukey")))
