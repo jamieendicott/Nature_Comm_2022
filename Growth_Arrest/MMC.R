@@ -58,3 +58,21 @@ MMC.growthcurve<-ggplot(data=s2,aes(y=Total.PDL,x=Days.in.culture,col=Agent))+
                                                                             "AG11182" = "Adult Vascular Endothelial Cell \nAG11182",
                                                                             "AG11546" = "Adult Vascular Smooth Muscle Cell \nAG11546")))+
   theme(strip.text.x = element_text(size = 7.5))
+
+samples$m.med<-BetaValueToMValue(samples$med)
+samples$condition<-as.factor(samples$Agent)
+cell.line<-"AG16146"
+s<-subset(samples,samples$Coriell.ID==cell.line)
+res<-lmer(data=s,m.med ~ Days.in.culture+condition+(1|condition),REML = FALSE)
+anova(res)
+
+s3<-subset(s2,s2$Coriell.ID==cell.line)
+s3 #ensure order is correct
+m2<-m[,c(match(s3$EPIC.ID,colnames(m)))]
+m.mmc<-apply(m2[,12:14],1,mean,na.rm=T)
+m.c<-apply(m2[,10:11],1,mean,na.rm=T)
+
+t.test(m2[,1],m.c,alternative='greater'))
+t.test(m2[,1],m.mmc,alternative='greater'))
+
+
