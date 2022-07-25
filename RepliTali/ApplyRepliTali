@@ -1,2 +1,2 @@
-download.file('https://github.com/jamieendicott/Nature_Comm_2022/blob/main/RepliTali/RepliTali_coefs.csv','./RepliTali_coefs.csv')
+download.file('https://raw.githubusercontent.com/jamieendicott/Nature_Comm_2022/main/RepliTali/RepliTali_coefs.csv','./RepliTali_coefs.csv')
 RT<-read.csv('RepliTali_coefs.csv')
