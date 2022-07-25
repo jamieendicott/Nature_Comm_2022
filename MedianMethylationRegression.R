@@ -8,8 +8,8 @@ betas<-read.csv('processed.betas.csv',check.names=F,row.names=1)
 #subset betas to only PMD solo-WCGWs
 b<-subset(betas,rownames(betas)%in%EPIC.comPMD$V4)
 samples<-read.csv('samples.csv')
-samples<-subset(samples,samples$Experiment=="Baseline profiling")
-b<-b[,c(match(samples$EPIC.ID,colnames()))]
+samples<-subset(samples,samples$characteristics..subexperiment=="Baseline profiling")
+b<-b[,c(match(rownames(samples),colnames(b)))]
 samples$med<-apply(b,2,median,na.rm=T)
 
 cols<-c(AG21837="coral",AG06561="brown",
