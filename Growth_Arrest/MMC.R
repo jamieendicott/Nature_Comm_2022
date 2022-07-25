@@ -1,21 +1,22 @@
 library(ggplot2)
 library(sesame)
 
-CpGs<-read.table('EPIC.comPMD.probes.tsv')
-samples<-read.csv('compiled.samples.batches.csv')
+EPIC.comPMD<-read.table('EPIC.comPMD.probes.tsv')
+samples<-read.csv('samples.csv')
 betas<-read.csv('ga.mmc.all.betas.csv',row.names=1,check.names = FALSE)
 
 ##MMC growth arrest
 s<-subset(samples,samples$characteristics..subexperiment=="Growth arrest: MMC")
 
 #duplicating parent/NA timepoints and assigning to each condition
+s<-s[order(s[,18]),] #order by time
 s2<-rbind(s[1:3,],s)
 s2$characteristics..culture_agent<-as.character(s2$characteristics..culture_agent)
 s2$characteristics..culture_agent[1:3]<-"control"
 s2$characteristics..culture_agent[4:6]<-"MMC"
 
-b<-subset(betas,rownames(betas)%in%CpGs$V4)
-b<-b[,c(match(rownames(s2),colnames(b)))]
+b<-subset(betas,rownames(betas)%in%EPIC.comPMD$V4)
+b<-b[,c(match(s2$X...Sample.name,colnames(b)))]
 s2$med<-apply(b,2,median,na.rm=T)
 s2$characteristics..culture_agent<-as.factor(s2$characteristics..culture_agent)
 
@@ -34,7 +35,7 @@ dev.off()
 
 #Regression coefficients etc for each line
 c<-"AG16146"
-d<-subset(samples,samples$characteristics..CORIELL_ID==c)
+d<-subset(s2,s2$characteristics..CORIELL_ID==c)
 summary(lm(d$med~d$characteristics..population_doublings))
 #AG11182 r2 0.7421  p-value: 7.52e-05
 #AG11546 r2 0.8032 p-value: 1.437e-05
@@ -60,20 +61,20 @@ MMC.growthcurve<-ggplot(data=s2,aes(y=characteristics..population_doublings,x=ch
                                                                             "AG11546" = "Adult Vascular Smooth Muscle Cell \nAG11546")))+
   theme(strip.text.x = element_text(size = 7.5))
 
-samples$m.med<-BetaValueToMValue(samples$med)
-samples$condition<-as.factor(samples$characteristics..culture_agent)
+s2$m.med<-BetaValueToMValue(s2$med)
+s2$condition<-as.factor(s2$characteristics..culture_agent)
 cell.line<-"AG16146"
-s<-subset(samples,samples$characteristics..CORIELL_ID==cell.line)
+s<-subset(s2,s2$characteristics..CORIELL_ID==cell.line)
 res<-lmer(data=s,m.med ~ characteristics..days_in_culture+condition+(1|condition),REML = FALSE)
 anova(res)
 
-s3<-subset(s2,s2$characteristics..CORIELL_ID==cell.line)
+m<-BetaValueToMValue(b)
+cell.line<-"AG11182" #etc
+s3<-subset(s,s$characteristics..CORIELL_ID==cell.line)
 s3 #ensure order is correct
-m2<-m[,c(match(s3$EPIC.ID,colnames(m)))]
-m.mmc<-apply(m2[,12:14],1,mean,na.rm=T)
-m.c<-apply(m2[,10:11],1,mean,na.rm=T)
+m2<-m[,c(match(s3$X...Sample.name,colnames(m)))]
+m.mmc<-apply(m2[,11:13],1,mean,na.rm=T)
+m.c<-apply(m2[,9:10],1,mean,na.rm=T)
 
-t.test(m2[,1],m.c,alternative='greater'))
-t.test(m2[,1],m.mmc,alternative='greater'))
-
-
+t.test(m2[,1],m.c,alternative='greater')
+t.test(m2[,1],m.mmc,alternative='greater')
