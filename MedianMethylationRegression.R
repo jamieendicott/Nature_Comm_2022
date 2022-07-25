@@ -17,7 +17,7 @@ cols<-c(AG21837="coral",AG06561="brown",
         AG16146="goldenrod",AG21839="darkslateblue",
         AG21859="darkslategray3")
 
-g.PDL<-ggplot(data=samples,aes(x=Total.PDL,y=med,col=Coriell.ID))+
+g.PDL<-ggplot(data=samples,aes(x=characteristics..population_doublings,y=med,col=characteristics..CORIELL_ID))+
   geom_point(alpha=0.4)+geom_smooth(method = 'lm')+
   scale_color_manual(values=cols)+theme_classic()+
   labs(x="Population doublings in culture",y="Median PMD solo-WCGW Methylation")+
