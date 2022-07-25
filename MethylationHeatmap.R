@@ -10,13 +10,13 @@ betas<-read.csv('processed.betas.csv',check.names=F,row.names=1)
 #subset betas to only PMD solo-WCGWs
 b<-subset(betas,rownames(betas)%in%EPIC.comPMD$V4)
 
-s<-subset(samples,samples$Coriell.ID=="AG21859")
+s<-subset(samples,samples$characteristics..CORIELL_ID=="AG21859")
 #sort by subculture then PDs
 s<-s[order( s[,4], s[,5] ),]
 #move first timepoint to first row
 s2<-rbind(s[40,],s[-40,])
 
-b<-betas[,c(match(s2$EPIC.ID,colnames(betas)))]
+b<-betas[,c(match(rownames(s2),colnames(betas)))]
 b<-na.omit(b)
 b2<-b[order(b[,1],decreasing = TRUE),]
 
