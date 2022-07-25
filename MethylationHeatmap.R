@@ -9,18 +9,19 @@ EPIC.comPMD<-read.delim('EPIC.comPMD.probes.tsv',header=F)
 betas<-read.csv('processed.betas.csv',check.names=F,row.names=1) 
 #subset betas to only PMD solo-WCGWs
 b<-subset(betas,rownames(betas)%in%EPIC.comPMD$V4)
-
-s<-subset(samples,samples$characteristics..CORIELL_ID=="AG21859")
+samples<-read.csv('samples.csv',row.names=1)
+s<-subset(samples,samples$characteristics..subexperiment=="Baseline profiling" &
+          samples$characteristics..CORIELL_ID=="AG21859")
 #sort by subculture then PDs
-s<-s[order( s[,4], s[,5] ),]
+s<-s[order( s[,15], s[,16] ),]
 #move first timepoint to first row
 s2<-rbind(s[40,],s[-40,])
 
-b<-betas[,c(match(rownames(s2),colnames(betas)))]
+b<-b[,c(match(rownames(s2),colnames(b)))]
 b<-na.omit(b)
 b2<-b[order(b[,1],decreasing = TRUE),]
 
-p<-pheatmap(b3,cluster_cols = F, cluster_rows =F,
+p<-pheatmap(b2,cluster_cols = F, cluster_rows =F,
          show_rownames = F, show_colnames = F,
          gaps_col = c(14,26),
          color=turbo(100)
