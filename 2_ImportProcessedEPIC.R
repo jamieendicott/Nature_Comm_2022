@@ -2,10 +2,9 @@ library(GEOquery)
 Sys.setenv("VROOM_CONNECTION_SIZE" = 131072 * 100)
 g<-getGEO('GSE197512')
 p<-pData(g[[1]])
-
-p$base<-basename(p$'basename:ch1')
-p<-p[,c(1,8,84,86,89:94,103,112,114,115,121,123)]
+p<-read.csv('samples.csv',row.names=1)
 
 getGEOSuppFiles(GEO='GSE197512', makeDirectory = TRUE, baseDir = getwd(),
   fetch_files = TRUE) 
 list.files(".")
+
