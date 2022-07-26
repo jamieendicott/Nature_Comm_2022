@@ -16,15 +16,12 @@ library(EnhancedVolcano)
 library(patchwork)
 library(purrr)
 
-outdir <- "de_analysis_out_files"
-dir.create(outdir)
-
 Sys.setenv("VROOM_CONNECTION_SIZE" = 131072 * 100)
 g<-getGEO('GSE197471')
 p<-(pData(g[[1]]))
 
 #note: this is ALL samples, not just oxygen culture condition experiment. filter:
-data_for_DE_exp<-subset(p,p$'subexperiment:ch1'=="Reduced oxygen")
+p<-subset(p,p$'subexperiment:ch1'=="Reduced oxygen")
 
 #remove senescence timepoints (GSM5918143, GSM5918151)
 data_for_DE_exp<-subset(p,p$geo_accession!="GSM5918143" &
@@ -120,13 +117,23 @@ dev.off()
 #FGSEA
 #Map Ensembl gene IDs to symbol. First create a mapping table.
 library(fgsea)
-library(DESeq2)       
+library(DESeq2)
+library(apeglm)
+       
 counts<-count_data_exp
+
 x.samples<-data_for_DE_exp
+rownames(x.samples)<-x.samples$sample       
 x.counts<-counts[,c(match(x.samples$sample,colnames(counts)))]
 dds <- DESeqDataSetFromMatrix(countData = x.counts,
                               colData = x.samples,
                               design= ~ PDL + ox)
+dds <- DESeq(dds)
+resultsNames(dds)
+res <- results(dds, name= "ox_low_vs_ambient" ) #change name to suit experiment
+res
+resLFC <- lfcShrink(dds, coef="ox_low_vs_ambient", type="apeglm")
+resLFC
        
        
 res$row <- rownames(res)
@@ -139,4 +146,24 @@ ens2symbol
 df<-as.data.frame(res)
 res2 <- inner_join(df, ens2symbol, by=c("row"="ENSEMBL"))
 head(res2)
+res2 <- res2 %>% 
+  dplyr::select(SYMBOL, stat) %>% #19501
+  na.omit() %>% #16226 obs
+  distinct() %>% 
+  group_by(SYMBOL) %>% 
+  summarize(stat=mean(stat)) #16203 genes
+head(res2)
+
+ranks <- deframe(res2)
+head(ranks, 20)
        
+download.file('http://www.gsea-msigdb.org/gsea/msigdb/download_file.jsp?filePath=/msigdb/release/7.5.1/msigdb.v7.5.1.symbols.gmt','./msigdb.v7.5.1.symbols.gmt')
+pathways.hallmark <- gmtPathways('./msigdb.v7.5.1.symbols.gmt')       
+pathways.hallmark %>% 
+  head() %>% 
+  lapply(head)
+fgseaRes <- fgsea(pathways=pathways.hallmark, stats=ranks)
+
+fgseaResTidy <- fgseaRes %>%
+  as_tibble() %>%
+  arrange(desc(NES))       
