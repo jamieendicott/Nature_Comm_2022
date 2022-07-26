@@ -117,4 +117,26 @@ pdf('volcano.hypoxia.nosens.pdf')
 volcano
 dev.off()       
 
-
+#FGSEA
+#Map Ensembl gene IDs to symbol. First create a mapping table.
+library(fgsea)
+library(DESeq2)       
+counts<-count_data_exp
+x.samples<-data_for_DE_exp
+x.counts<-counts[,c(match(x.samples$sample,colnames(counts)))]
+dds <- DESeqDataSetFromMatrix(countData = x.counts,
+                              colData = x.samples,
+                              design= ~ PDL + ox)
+       
+       
+res$row <- rownames(res)
+ens2symbol <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=res$row, 
+                                    columns="SYMBOL",
+                                    keytype="ENSEMBL")
+ens2symbol <- as_tibble(ens2symbol)
+ens2symbol
+df<-as.data.frame(res)
+res2 <- inner_join(df, ens2symbol, by=c("row"="ENSEMBL"))
+head(res2)
+       
