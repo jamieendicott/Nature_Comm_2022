@@ -1,4 +1,4 @@
-#Note: RNA seq data was processed using the following pipeline: 
+#Note: RNA seq data was processed using the following pipeline: https://github.com/vari-bbc/rnaseq_workflow  
 
 library(GEOquery)
 orgdb <- "org.Hs.eg.db"
@@ -32,14 +32,16 @@ data_for_DE_exp<-subset(p,p$geo_accession!="GSM5918143" &
 
 #simplify
 data_for_DE_exp<-data_for_DE_exp[,c(56,62,27)]
-colnames(data_for_DE_exp)<-c("ox","PDL","sample")
+data_for_DE_exp$ox<-as.factor(c(rep("ambient",7,),rep("low",7)))
+colnames(data_for_DE_exp)<-c("type","PDL","sample","ox")
+data_for_DE_exp$PDL<-as.numeric(data_for_DE_exp$PDL)
 
 download.file('https://ftp.ncbi.nlm.nih.gov/geo/series/GSE197nnn/GSE197471/suppl/GSE197471_raw_cts_GEO.tsv.gz','./GSE197471_raw_cts_GEO.tsv.gz')
 count_data<-read.table('GSE197471_raw_cts_GEO.tsv.gz',row.names=2)
 dim(count_data)
 #[1] 19384    80
 
-count_data_exp<-count_data[,c(match(data_for_DE_exp$description,colnames(count_data)))]
+count_data_exp<-count_data[,c(match(data_for_DE_exp$sample,colnames(count_data)))]
 
 gene_names_df <- data.frame(row.names = rownames(count_data_exp))
 gene_names_df$Symbol <- AnnotationDbi::mapIds(eval(as.name(orgdb)), rownames(gene_names_df), 
@@ -68,10 +70,51 @@ table(keep)
 y <- y[keep, , keep.lib.sizes=FALSE]
 y <- calcNormFactors(y)
 norm_counts <- cpm(y, log=TRUE)
+y <- estimateDisp(y, design, robust=TRUE)
+fit <- glmQLFit(y, design, robust=TRUE)
+contrasts_as_str <- sapply(as.data.frame(combn(unique(paste0("ox", y$samples$ox)), 2)), function(comp) paste0(comp[1],"-",comp[2]))
+contrasts <- makeContrasts(contrasts=contrasts_as_str, levels=design)
+contrasts
+                           
+qlf <- lapply(rlang::set_names(colnames(contrasts), colnames(contrasts)), function(contrast){
+  glmQLFTest(fit, contrast=contrasts[,contrast])
+})
+                           
+invisible(lapply(names(qlf), function(contrast) {
+  plotMD(qlf[[contrast]], status=decideTestsDGE(qlf[[contrast]]), values=c(1,-1), 
+         col=c("red","blue"), legend="topright", hl.cex=0.6, main=contrast)
+}))
 
+res <- lapply(qlf, function(contrast) topTags(contrast, n = Inf))
 
-
-
-
+lapply(res, function(contrast) table(as.data.frame(contrast)$FDR < 0.05))
+#FALSE  TRUE 
+#14097  1014 
+       
+lapply(res, function(contrast) {
+  table(as.data.frame(contrast) %>% 
+          dplyr::mutate(signif=FDR < 0.05, dir=ifelse(logFC>0,"up","dwn")) %>% 
+          dplyr::select(signif, dir))
+})
+#$`oxambient-oxlow`
+#       dir
+#signif   dwn   up
+#  FALSE 6994 7103
+#  TRUE   641  373       
+       
+#volcano plot
+volcano <- lapply(rlang::set_names(names(res),names(res)), function(contrast){
+  toptable <- res[[contrast]]$table
+  EnhancedVolcano::EnhancedVolcano(toptable=toptable, x="logFC", y="FDR", 
+                                   lab=toptable$Uniq_syms, title=contrast, pCutoff=0.05, FCcutoff = 1, ylab="-log10(FDR)",
+                                   ylim = c(0, max(-log10(toptable$FDR), na.rm = TRUE) + 0.5),
+                                   xlim = c(-max(abs(toptable$logFC))-0.5, max(abs(toptable$logFC))+0.5),
+    col=c('gray22', 'gray22', 'gray22', 'red3'),
+    colAlpha = 0.6)
+})       
+       
+pdf('volcano.hypoxia.nosens.pdf')
+volcano
+dev.off()       
 
 
