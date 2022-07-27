@@ -1,28 +1,67 @@
 #Adding replication timing information to array manifest
 #bigwig repliseq files from ENCODE
+#note: repliseq data is mapped to hg19
 library(GenomicRanges)
 library(rtracklayer)
 #importing repliseq .bws
-setwd("/Users/jamie.endicott/Desktop/replication.timing.UCSC/")
-RS.HUVEC.G1b<-import('wgEncodeUwRepliSeqHuvecG1bPctSignalRep1.bigWig',format="BigWig")
-RS.HUVEC.S1<-import('wgEncodeUwRepliSeqHuvecS1PctSignalRep1.bigWig',format="BigWig")
-RS.HUVEC.S2<-import('wgEncodeUwRepliSeqHuvecS2PctSignalRep1.bigWig',format="BigWig")
-RS.HUVEC.S3<-import('wgEncodeUwRepliSeqHuvecS3PctSignalRep1.bigWig',format="BigWig")
-RS.HUVEC.S4<-import('wgEncodeUwRepliSeqHuvecS4PctSignalRep1.bigWig',format="BigWig")
-RS.HUVEC.G2<-import('wgEncodeUwRepliSeqHuvecG2PctSignalRep1.bigWig',format="BigWig")
+#can either download locally here: http://genome.ucsc.edu/cgi-bin/hgFileUi?db=hg19&g=wgEncodeUwRepliSeq
+#or use the following
+urls<-c(#BJ
+        'http://hgdownload.cse.ucsc.edu/goldenpath/hg19/encodeDCC/wgEncodeUwRepliSeq/wgEncodeUwRepliSeqBjG1bPctSignalRep1.bigWig',
+        'http://hgdownload.cse.ucsc.edu/goldenpath/hg19/encodeDCC/wgEncodeUwRepliSeq/wgEncodeUwRepliSeqBjS1PctSignalRep1.bigWig',
+        'http://hgdownload.cse.ucsc.edu/goldenpath/hg19/encodeDCC/wgEncodeUwRepliSeq/wgEncodeUwRepliSeqBjS2PctSignalRep1.bigWig',
+        'http://hgdownload.cse.ucsc.edu/goldenpath/hg19/encodeDCC/wgEncodeUwRepliSeq/wgEncodeUwRepliSeqBjS3PctSignalRep1.bigWig',
+        'http://hgdownload.cse.ucsc.edu/goldenpath/hg19/encodeDCC/wgEncodeUwRepliSeq/wgEncodeUwRepliSeqBjS4PctSignalRep1.bigWig',
+        'http://hgdownload.cse.ucsc.edu/goldenpath/hg19/encodeDCC/wgEncodeUwRepliSeq/wgEncodeUwRepliSeqBjG2PctSignalRep1.bigWig',
+        #HUVEC
+        'http://hgdownload.cse.ucsc.edu/goldenpath/hg19/encodeDCC/wgEncodeUwRepliSeq/wgEncodeUwRepliSeqHuvecG1bPctSignalRep1.bigWig',
+        'http://hgdownload.cse.ucsc.edu/goldenpath/hg19/encodeDCC/wgEncodeUwRepliSeq/wgEncodeUwRepliSeqHuvecS1PctSignalRep1.bigWig',
+        'http://hgdownload.cse.ucsc.edu/goldenpath/hg19/encodeDCC/wgEncodeUwRepliSeq/wgEncodeUwRepliSeqHuvecS2PctSignalRep1.bigWig',
+        'http://hgdownload.cse.ucsc.edu/goldenpath/hg19/encodeDCC/wgEncodeUwRepliSeq/wgEncodeUwRepliSeqHuvecS3PctSignalRep1.bigWig',
+        'http://hgdownload.cse.ucsc.edu/goldenpath/hg19/encodeDCC/wgEncodeUwRepliSeq/wgEncodeUwRepliSeqHuvecS4PctSignalRep1.bigWig',
+        'http://hgdownload.cse.ucsc.edu/goldenpath/hg19/encodeDCC/wgEncodeUwRepliSeq/wgEncodeUwRepliSeqHuvecG2PctSignalRep1.bigWig')
+dests<-c('./BJ.G1b.bigWig',
+         './BJ.S1.bigWig',
+         './BJ.S2.bigWig',
+         './BJ.S3.bigWig',
+         './BJ.S4.bigWig',
+         './BJ.G2.bigWig',
+         './HUVEC.G1b.bigWig',
+         './HUVEC.S1.bigWig',
+         './HUVEC.S2.bigWig',
+         './HUVEC.S3.bigWig',
+         './HUVEC.S4.bigWig',
+         './HUVEC.G2.bigWig')
 
-RS.BJ.G1b<-import('wgEncodeUwRepliSeqBjG1bPctSignalRep1.bigWig',format="BigWig")
-RS.BJ.S1<-import('wgEncodeUwRepliSeqBjS1PctSignalRep1.bigWig',format="BigWig")
-RS.BJ.S2<-import('wgEncodeUwRepliSeqBjS2PctSignalRep1.bigWig',format="BigWig")
-RS.BJ.S3<-import('wgEncodeUwRepliSeqBjS3PctSignalRep1.bigWig',format="BigWig")
-RS.BJ.S4<-import('wgEncodeUwRepliSeqBjS4PctSignalRep1.bigWig',format="BigWig")
-RS.BJ.G2<-import('wgEncodeUwRepliSeqBjG2PctSignalRep1.bigWig',format="BigWig")
+for(i in seq_along(urls)){
+    download.file(urls[i], dests[i], mode="wb")
+}
+
+RS.HUVEC.G1b<-import('HUVEC.G1b.bigWig',format="BigWig")
+RS.HUVEC.S1<-import('HUVEC.S1.bigWig',format="BigWig")
+RS.HUVEC.S2<-import('HUVEC.S2.bigWig',format="BigWig")
+RS.HUVEC.S3<-import('HUVEC.S3.bigWig',format="BigWig")
+RS.HUVEC.S4<-import('HUVEC.S4.bigWig',format="BigWig")
+RS.HUVEC.G2<-import('HUVEC.G2.bigWig',format="BigWig")
+
+RS.BJ.G1b<-import('BJ.G1b.bigWig',format="BigWig")
+RS.BJ.S1<-import('BJ.S1.bigWig',format="BigWig")
+RS.BJ.S2<-import('BJ.S2.bigWig',format="BigWig")
+RS.BJ.S3<-import('BJ.S3.bigWig',format="BigWig")
+RS.BJ.S4<-import('BJ.S4.bigWig',format="BigWig")
+RS.BJ.G2<-import('BJ.G2.bigWig',format="BigWig")
 
 #load probe manifest (PMD solo-WCGWs only here, but could use complete manifest)
 EPIC.comPMD.probes <- read.delim("EPIC.comPMD.probes.tsv", header=FALSE)
-solo.WCGW.universe<-GRanges(seqnames = EPIC.comPMD.probes$V1,ranges = IRanges(start = EPIC.comPMD.probes$V2,end = EPIC.comPMD.probes$V3))
+solo.WCGW.universe<-GRanges(seqnames = EPIC.comPMD.probes$V1,
+                            ranges = IRanges(start = EPIC.comPMD.probes$V2,
+                                             end = EPIC.comPMD.probes$V3))
 values(solo.WCGW.universe)<-EPIC.comPMD.probes$V4
 #not all repliseq files have the same coverage, combine into overlapping GR
+for(i in seq_along(grs)){
+    OL.RS.HUVEC<-subsetByOverlaps(RS.HUVEC.G1b,grs[i])
+}
+
 OL.RS.HUVEC<-subsetByOverlaps(RS.HUVEC.G1b,RS.HUVEC.S1)
 OL.RS.HUVEC<-subsetByOverlaps(RS.HUVEC.G1b,RS.HUVEC.S2)
 OL.RS.HUVEC<-subsetByOverlaps(RS.HUVEC.G1b,RS.HUVEC.S3)
