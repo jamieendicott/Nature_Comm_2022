@@ -119,51 +119,142 @@ dev.off()
 library(fgsea)
 library(DESeq2)
 library(apeglm)
+library(msigdbr)
+       
        
 counts<-count_data_exp
+       
+# set organism for loking up gene sets
+msigdb_organism <- "Homo sapiens"
 
-x.samples<-data_for_DE_exp
-rownames(x.samples)<-x.samples$sample       
-x.counts<-counts[,c(match(x.samples$sample,colnames(counts)))]
-dds <- DESeqDataSetFromMatrix(countData = x.counts,
-                              colData = x.samples,
-                              design= ~ PDL + ox)
-dds <- DESeq(dds)
-resultsNames(dds)
-res <- results(dds, name= "ox_low_vs_ambient" ) #change name to suit experiment
-res
-resLFC <- lfcShrink(dds, coef="ox_low_vs_ambient", type="apeglm")
-resLFC
+# set seed for gsea
+gsea_seed <- 12345
+
+de_objs <- list(dgelist=y, fit=fit, qlf=qlf, res=res)
+#de_objs <- readRDS("../template_Rmd_for_downstream_work/de_analysis_out_files_oxygen/edgeR.rds")
+de_res <- lapply(de_objs$res, as.data.frame)
+sapply(de_res, nrow)
+
+cpms<- gene_names_df %>% 
+  rownames_to_column("ensembl_id") %>% 
+  left_join(., as_tibble(norm_counts, rownames="ensembl_id"), by="ensembl_id")        
        
        
-res$row <- rownames(res)
-ens2symbol <- AnnotationDbi::select(org.Hs.eg.db,
-                                    key=res$row, 
-                                    columns="SYMBOL",
-                                    keytype="ENSEMBL")
-ens2symbol <- as_tibble(ens2symbol)
-ens2symbol
-df<-as.data.frame(res)
-res2 <- inner_join(df, ens2symbol, by=c("row"="ENSEMBL"))
-head(res2)
-res2 <- res2 %>% 
-  dplyr::select(SYMBOL, stat) %>% #19501
-  na.omit() %>% #16226 obs
-  distinct() %>% 
-  group_by(SYMBOL) %>% 
-  summarize(stat=mean(stat)) #16203 genes
-head(res2)
+# Remove genes with 0 logFC and PValue = 1, calculate ranking metric then sort Entrez genes in descending order
+# Adapts code from
+# https://github.com/YuLab-SMU/DOSE/wiki/how-to-prepare-your-own-geneList.
+prep_clusterprofiler_genelist <- function(dge_table, rank_by="signed-log10pval"){
+  
+  # filter away genes with exactly 0 logFC and PValue = 1.
+  filt_dge_table <- dge_table[dge_table$logFC != 0 &
+                                dge_table$PValue != 1, ]
+  
+  # calculate rank_metric
+  if(identical(rank_by, "signed-log10pval")){
+    filt_dge_table$rank_metric <-
+      sign(filt_dge_table$logFC) * -log10(filt_dge_table$PValue)
+  } else{
+    stop("Specify valid ranking metric.")
+  }
+  
+  ## feature 1: numeric vector
+  geneList <- filt_dge_table$rank_metric
+  ## feature 2: named vector
+  names(geneList) <- as.character(filt_dge_table$entrez)
+  ## feature 3: decreasing order
+  geneList <- sort(geneList, decreasing = TRUE)
 
-ranks <- deframe(res2)
-head(ranks, 20)
-       
-download.file('http://www.gsea-msigdb.org/gsea/msigdb/download_file.jsp?filePath=/msigdb/release/7.5.1/msigdb.v7.5.1.symbols.gmt','./msigdb.v7.5.1.symbols.gmt')
-pathways.hallmark <- gmtPathways('./msigdb.v7.5.1.symbols.gmt')       
-pathways.hallmark %>% 
-  head() %>% 
-  lapply(head)
-fgseaRes <- fgsea(pathways=pathways.hallmark, stats=ranks)
+  return(geneList)
+}
 
-fgseaResTidy <- fgseaRes %>%
-  as_tibble() %>%
-  arrange(desc(NES))       
+
+# Get the genesets and format for clusterprofiler (dataframe with col1 = geneset name, col2 = entrez gene)
+# organisms is 'Homo sapiens' or 'Mus musculus'
+# if no msigdb subcat, then specify NA
+get_geneset <- function(gene_set, msigdb_subcat=NA, organism){
+  if (gene_set %in% c("H", "C1", "C2", "C3", "C4", "C5", "C6", "C7")){
+    #browser()
+    msigdbr_args <- list(species = organism, category = gene_set, subcat=msigdb_subcat)
+    msigdbr_args <-  msigdbr_args[!sapply(msigdbr_args, is.na)] # remove 'subcat' param if it is NA
+    
+    msigdbr_gene_set <- do.call(msigdbr::msigdbr, msigdbr_args)
+    
+    # convert to clusterprofiler friendly format
+    geneset_out <- msigdbr_gene_set[, c("gs_name", "entrez_gene")] %>%
+      as.data.frame(stringsAsFactors = FALSE)
+    
+  } else{
+    stop("Invalid value for gene_set parameter.")
+  }
+  
+  geneset_out
+}
+
+# Get ranked genes
+genes_and_score <- lapply(de_res, prep_clusterprofiler_genelist)
+sapply(genes_and_score, length)
+
+# remove genes with no Entrez ID (isNA) 
+genes_and_score <- lapply(genes_and_score, function(x) x[!is.na(names(x))])
+sapply(genes_and_score, length)
+#drops down to 13765
+
+# remove genes with duplicated Entrez ID
+genes_and_score <- lapply(genes_and_score, function(x) {
+  ids <- names(x)
+  duplicated_ids <- unique(ids[duplicated(ids)])
+  x[!ids %in% duplicated_ids]
+})
+sapply(genes_and_score, length)
+
+# Confirm genes are ordered in decreasing order
+correct_ranking <- sapply(genes_and_score, function(x) {
+  all(order(x, decreasing = TRUE) == 1:length(x))
+})
+stopifnot(all(correct_ranking))
+
+# Get genesets and run GSEA
+genesets_of_interest <- list(H=c("H",NA))
+genesets <- lapply(genesets_of_interest, function(x) get_geneset(gene_set=x[1], 
+                                                                 msigdb_subcat=x[2], 
+                                                                 organism=msigdb_organism))
+
+gsea_res <- lapply(genesets, function(geneset){
+  
+  lapply(genes_and_score, function(y){
+    set.seed(gsea_seed) # make reproducible
+    
+    # gene_list is named vector where names are the Entrez IDs and values are the ranking metric
+    gsea_res <- clusterProfiler::GSEA(geneList = y,
+                                      TERM2GENE = geneset, 
+                                      eps = 0.0 # need to set this or Pvalues will not reach below 1e-10
+                                      )
+    
+    gsea_res_syms <- DOSE::setReadable(gsea_res,
+                                       OrgDb = eval(as.symbol(orgdb)),
+                                       keyType = "ENTREZID")
+    list(entrez=gsea_res, symbols=gsea_res_syms)
+    
+  })
+})
+
+# output to file
+invisible(lapply(names(gsea_res), function(geneset){
+  lapply(names(gsea_res[[geneset]]), function(contrast){
+    gseaResult <- gsea_res[[geneset]][[contrast]]$symbols
+    write_tsv(as_tibble(gseaResult), paste0(outdir, "/", contrast, "_", geneset, ".tsv")) 
+  })
+}))
+
+#Summary plot
+lapply(names(gsea_res), function(geneset){
+  lapply(names(gsea_res[[geneset]]), function(contrast){
+    gseaResult <- gsea_res[[geneset]][[contrast]]$symbols
+    if(nrow(gseaResult) > 0){
+      dotplot(gseaResult, split=".sign") + ggtitle(paste0(contrast," -- ",geneset)) + 
+        scale_y_discrete(label=function(x) str_trunc(x, 40)) + facet_grid(.~.sign)
+    } else{
+      "No significant results" 
+    }
+  })
+})
