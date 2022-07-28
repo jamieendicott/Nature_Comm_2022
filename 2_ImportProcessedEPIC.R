@@ -5,5 +5,3 @@ p<-pData(g[[1]])
 g.data <- as.data.frame(exprs(g[[1]]))
 head(g.data)
 dim(g.data)
-
-p<-read.csv('samples.csv',row.names=1)
