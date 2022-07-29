@@ -1,3 +1,6 @@
+library(purrr)
+library(reshape2)
+library(ggplot2)
 man<-read.table('EPICnonCGI.context.manifest.tsv') 
 
 PMD.SCGS.social<-subset(man,man$PMD==TRUE & man$SCGS==TRUE & man$type=='social') #7418
@@ -32,31 +35,70 @@ all<-rbind(PMD.SCGS.social,HMD.SCGS.social,
            PMD.SCGS.solo,HMD.SCGS.solo,
            PMD.SCGW.solo,HMD.SCGW.solo,
            PMD.WCGW.solo,HMD.WCGW.solo)
-           
-for (i in names) {
+
+##Load in methylation data
+betas<-g.data
+#beautify pdata...
+p<-p[,c(1,2,48:56,58:61)] #can trim further if desired
+cols<-(as.character(map(strsplit(colnames(p), split = ":"), 1)))
+colnames(p)<-cols
+
+cell.line<-"AG21839"
+samples<-subset(p, p$subexperiment=="Baseline profiling"&
+                   p$coriell_id==cell.line)
+#order samples by advancing PDs
+samples<-samples[order(population_doublings),]
+b<-betas[,c(match(samples$geo_accession,colnames(betas)))]
+dim(b)
+#[1] 865918     27
+delta<-b-b[,1]
+
+names<-c('PMD.SCGS.social','HMD.SCGS.social',
+           'PMD.SCGW.social','HMD.SCGW.social',
+           'PMD.WCGW.social','HMD.WCGW.social',
+           'PMD.SCGS.solo','HMD.SCGS.solo',
+           'PMD.SCGW.solo','HMD.SCGW.solo',
+           'PMD.WCGW.solo','HMD.WCGW.solo')
+
+for (i in seq_along(names)) {
   name<-names[i]
   d<-subset(all,all$class==name)
   db<-subset(delta,rownames(delta)%in%d$probeID)
   med <- apply(db,2,median,na.rm=T)
-  assign(paste0(names[i],'.med'),med)
+  new_name <- paste0("med",names[i])
+  assign(new_name,med)
 } 
 
-name<-'HMD.WCGW.solo'
-d<-subset(all,all$class==name)
-db<-subset(betas,rownames(betas)%in%d$probeID)
-samples$HMD.WCGW.solo<-apply(db,2,median)
+samples$PMD.SCGS.social.med<-medPMD.SCGS.social
+samples$HMD.SCGS.social.med<-medHMD.SCGS.social
+samples$PMD.SCGW.social.med<-medPMD.SCGW.social
+samples$HMD.SCGW.social.med<-medHMD.SCGW.social
+samples$PMD.WCGW.social.med<-medPMD.WCGW.social
+samples$HMD.WCGW.social.med<-medHMD.WCGW.social
 
-median.PDL<-median.betas[,c(2,4:15)]
-median.PDL<-melt(median.PDL,id='Total.PDL')
-median.PDL$Total.PDL<-as.numeric(median.PDL$Total.PDL)
+samples$PMD.SCGS.solo.med<-medPMD.SCGS.solo
+samples$HMD.SCGS.solo.med<-medHMD.SCGS.solo
+samples$PMD.SCGW.solo.med<-medPMD.SCGW.solo
+samples$HMD.SCGW.solo.med<-medHMD.SCGW.solo
+samples$PMD.WCGW.solo.med<-medPMD.WCGW.solo
+samples$HMD.WCGW.solo.med<-medHMD.WCGW.solo
+
+median.PDL<-samples[,c(12,16:27)]
+median.PDL<-melt(median.PDL,id='population_doublings')
+median.PDL$population_doublings<-as.numeric(median.PDL$population_doublings)
 median.PDL$value<-as.numeric(median.PDL$value)
 median.PDL$variable<-as.factor(median.PDL$variable)
 c<-median.PDL
-c$CpG.context<-c(rep('social',162),rep('solo',162))
-c$PMDvHMD<-c(rep('PMD',27),rep('HMD',27),rep('PMD',27),rep('HMD',27),rep('PMD',27),rep('HMD',27),rep('PMD',27),rep('HMD',27),rep('PMD',27),rep('HMD',27),rep('PMD',27),rep('HMD',27))
+median.PDL$CpG.context<-c(rep('social',162),rep('solo',162))
+median.PDL$PMDvHMD<-as.factor(c(rep('PMD',27),rep('HMD',27),
+                                rep('PMD',27),rep('HMD',27),
+                                rep('PMD',27),rep('HMD',27),
+                                rep('PMD',27),rep('HMD',27),
+                                rep('PMD',27),rep('HMD',27),
+                                rep('PMD',27),rep('HMD',27)))
 
-g<-ggplot(data=c,aes(x=Total.PDL,y=value,col=variable))
-pdf('AG21839.noCGI.delta.PMDvHMD.pdf') #also made one with methylation
+g<-ggplot(data=median.PDL,aes(x=population_doublings,y=value,col=variable))
+pdf('AG21839.noCGI.delta.PMDvHMD.pdf') 
 g+geom_point()+stat_smooth(geom='line',alpha=0.4,method='lm')+
   theme_classic()+xlab('Total PDL in Culture')+
   facet_wrap(~PMDvHMD)+
