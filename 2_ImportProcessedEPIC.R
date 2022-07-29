@@ -5,3 +5,4 @@ p<-pData(g[[1]])
 g.data <- as.data.frame(exprs(g[[1]]))
 head(g.data)
 dim(g.data)
+#[1] 865918    372
