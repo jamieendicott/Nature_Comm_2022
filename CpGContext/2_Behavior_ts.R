@@ -88,7 +88,6 @@ median.PDL<-melt(median.PDL,id='population_doublings')
 median.PDL$population_doublings<-as.numeric(median.PDL$population_doublings)
 median.PDL$value<-as.numeric(median.PDL$value)
 median.PDL$variable<-as.factor(median.PDL$variable)
-c<-median.PDL
 median.PDL$CpG.context<-c(rep('social',162),rep('solo',162))
 median.PDL$PMDvHMD<-as.factor(c(rep('PMD',27),rep('HMD',27),
                                 rep('PMD',27),rep('HMD',27),
