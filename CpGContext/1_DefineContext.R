@@ -101,6 +101,6 @@ EPIC.nonCGI$WCGW<-EPIC.nonCGI$probeID %in% WCGWss$names
 
 ##Solo CpGs vs Social CpGs
 EPIC.nonCGI$type[EPIC.nonCGI$context35>=3]<-'social' #50719
-EPIC.nonCGI$type[EPIC.nonCGI$context35==0]<-'solo' #68126
+EPIC.nonCGI$type[EPIC.nonCGI$context35<=1]<-'solo' #68126, context includes CpG of interest!
 
 write.table(EPIC.nonCGI,'EPICnonCGI.context.manifest.tsv')
