@@ -3,6 +3,8 @@
 #note: repliseq data is mapped to hg19
 library(GenomicRanges)
 library(rtracklayer)
+library(ggplot2)
+library(dplyr)
 #importing repliseq .bws
 #can either download locally here: http://genome.ucsc.edu/cgi-bin/hgFileUi?db=hg19&g=wgEncodeUwRepliSeq
 #or use the following
@@ -130,44 +132,40 @@ S4<-OL.RS.BJ.S4.scores$score
 G2<-OL.RS.BJ.G2.scores$score
 BJ.RT.soloWCGW<-data.frame(probeID,G1b,S1,S2,S3,S4,G2)
 
+#load in sample info, betas if haven't already
+library(GEOquery)
+Sys.setenv("VROOM_CONNECTION_SIZE" = 131072 * 100)
+g<-getGEO('GSE197512')
+p<-pData(g[[1]])
+betas <- as.data.frame(exprs(g[[1]]))
+#beautify pdata
+p<-p[,c(1,2,48:56,58:60)] #can trim further if desired
+cols<-(as.character(map(strsplit(colnames(p), split = ":"), 1)))
+colnames(p)<-cols
 
-library(ggsci)
-library(ggplot2)
+##Obtain regression coefficients by CpG, by cell type
+cell.line<-"AG11182" #AG21859
+samples<-subset(p, p$subexperiment=="Baseline profiling"&
+                  p$coriell_id==cell.line)
+#order samples by advancing PDs
+samples<-samples[order(samples$population_doublings),]
+b<-betas[,c(match(samples$geo_accession,colnames(betas)))]
+dim(b)
+#[1] 865918     40 | 31
 
-samples<-read.csv('compiled.samples.batches.csv')
-betas<-read.csv('betas.GEO.csv',header=T,row.names = 1,check.names = FALSE)
-
-cell.line<-"AG21859"
-s<-subset(samples,samples$Coriell.ID==cell.line&
-                  samples$Experiment=="Baseline profiling")
-s<-s[order(s$Total.PDL),]
-b<-betas[,c(match(s$EPIC.ID,colnames(betas)))]
-
-#only interested in probes that haven't already lost all methylation
-b$delta<-b[,ncol(b)]-b[,1]
-b<-subset(b,b[,1]>=0.3)
-
-RTscores <- read.csv("~/Dropbox/replication timing/replication.timing/RTscores.soloWCGW.csv")
-RTscores<-RTscores[!duplicated(RTscores$V2), ]
-rownames(RTscores)<-RTscores$V2
-RTscores<-RTscores[,-c(1,2)]
-RT.rowanno<-RTscores[,c(6,5,4,3,2,1)] #BJ fibroblast
-RT.rowanno<-RTscores[,c(12,11,10,9,8,7)] #HUVECs
-colnames(RT.rowanno)<-c('G2','S4','S3','S2','S1','G1b')
+RT.rowanno<-BJ.RT.soloWCGW #BJ fibroblast compare to AG21859 fibroblast 
+RT.rowanno<-HUVEC.RT.soloWCGW #HUVECs compare to AG11182 endothelial cells
+RT.rowanno<-RT.rowanno[!duplicated(RT.rowanno$probeID), ]
 WAscore<-as.data.frame(0.917*RT.rowanno$G1b+0.750*RT.rowanno$S1+0.583*RT.rowanno$S2+
                          0.417*RT.rowanno$S3+0.250*RT.rowanno$S4+0*RT.rowanno$G2)
-WAscore[is.na(WAscore)] <- 0
 colnames(WAscore)<-'score'
-rownames(WAscore)<-rownames(RT.rowanno)
+rownames(WAscore)<-RT.rowanno$probeID
 head(WAscore)
 
 #Regress methylation across PMD solo-WCGWs to population doublings
-s<-subset(p,p$...
-b<-na.omit(betas)
-b<-b[,c(match(s$EPIC.ID,colnames(b)))]
-dim(b)
-
-lm<-apply(test,1,function(x) lm(x~s$Total.PDL)) 
+b<-na.omit(subset(b,rownames(b)%in%EPIC.comPMD.probes$V4))
+samples$population_doublings<-as.numeric(samples$population_doublings)
+lm<-apply(b,1,function(x) lm(x~samples$population_doublings)) 
 fit<-lm[[1]]
 names(summary(fit))
 head(fit)$coefficients
@@ -175,34 +173,18 @@ head(fit)$coefficients
 B1<-vector(mode='numeric',length=length(lm))
 for (i in 1:length(lm)){
   fit<-lm[[i]]
-  B1[i] <- summary(fit)$coefficients["s$Total.PDL","Estimate"]
+  B1[i] <- summary(fit)$coefficients["samples$population_doublings","Estimate"]
 }
 B1<-as.data.frame(B1)
-rownames(B1)<-rownames(test)
-b2<-na.omit(B1)
-b2$WA<-WAscore[c(match(rownames(b2),rownames(WAscore))),1]
-b2<-na.omit(b2)
+rownames(B1)<-rownames(b)
+B1$WA<-WAscore[c(match(rownames(B1),rownames(WAscore))),1]
+B1<-na.omit(B1)
 
-summary(lm(b2$B1~b2$WA))
-#AG11182
-#Multiple R-squared:  0.0664,	Adjusted R-squared:  0.06633 
-#F-statistic: 948.2 on 1 and 13332 DF,  p-value: < 2.2e-16
-
-#AG21859
-#Multiple R-squared:  0.1459,	Adjusted R-squared:  0.1458 
-#F-statistic:  1553 on 1 and 9096 DF,  p-value: < 2.2e-16
-
-#AG21859.slopevWA.all
-ggplot(data=b2,aes(x=WA,y=B1))+geom_point(alpha=0.15)+theme_bw()+ggtitle('AG21859')+
-  geom_smooth(method='lm',se=FALSE,col="darkred",size=0.8)
-
-#by WA quintile
-WAscore$ile<-ntile(WAscore$score,5)
-WAscore$ile<-as.factor(WAscore$ile)
-b2$ile<-WAscore[c(match(rownames(b2),rownames(WAscore))),2]
+#Classify CpG methylation change by which WA quintile CpG is in
+B1$ile<-as.factor(ntile(B1$WA,5))
 
 pdf(paste0(cell.line,'.violin.B1vWA.pdf'))
-ggplot(data=b2,aes(x=ile,y=B1,fill=ile))+geom_violin()+
+ggplot(data=B1,aes(x=ile,y=B1,fill=ile))+geom_violin()+
   geom_boxplot(width=0.1, color="grey", alpha=0.5)+
   theme_bw()+
   ggtitle(paste0(cell.line,' slope vs WA quintile'))+
@@ -210,6 +192,6 @@ ggplot(data=b2,aes(x=ile,y=B1,fill=ile))+geom_violin()+
   xlab('Replication timing WA score quintile')+ylab('PMD solo-WCGW methylation change per PD')
 dev.off()
 
-kruskal.test(b2$B1~b2$ile)
-#Kruskal-Wallis chi-squared = 1068.6, df = 4, p-value < 2.2e-16 AG11182
-#Kruskal-Wallis chi-squared = 1376.4, df = 4, p-value < 2.2e-16 AG21859
+kruskal.test(B1$B1~B1$ile)
+#Kruskal-Wallis chi-squared = 845.03, df = 4, p-value < 2.2e-16 AG11182
+#Kruskal-Wallis chi-squared = 1301.2, df = 4, p-value < 2.2e-16 AG21859
