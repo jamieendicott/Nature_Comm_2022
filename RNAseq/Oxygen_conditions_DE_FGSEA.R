@@ -32,6 +32,7 @@ data_for_DE_exp<-data_for_DE_exp[,c(56,62,27)]
 data_for_DE_exp$ox<-as.factor(c(rep("ambient",7,),rep("low",7)))
 colnames(data_for_DE_exp)<-c("type","PDL","sample","ox")
 data_for_DE_exp$PDL<-as.numeric(data_for_DE_exp$PDL)
+rownames(data_for_DE_exp)<-data_for_DE_exp$sample
 
 download.file('https://ftp.ncbi.nlm.nih.gov/geo/series/GSE197nnn/GSE197471/suppl/GSE197471_raw_cts_GEO.tsv.gz','./GSE197471_raw_cts_GEO.tsv.gz')
 count_data<-read.table('GSE197471_raw_cts_GEO.tsv.gz',row.names=2)
@@ -49,8 +50,8 @@ gene_names_df$entrez <- AnnotationDbi::mapIds(eval(as.name(orgdb)), rownames(gen
                                               keytype="ENSEMBL", column="ENTREZID", 
                                               multiVals="first")
 
-testthat::expect_equal(colnames(count_data), rownames(data_for_DE))
-testthat::expect_equal(rownames(count_data), rownames(gene_names_df))
+testthat::expect_equal(colnames(count_data_exp), rownames(data_for_DE_exp))
+testthat::expect_equal(rownames(count_data_exp), rownames(gene_names_df))
 
 y <- DGEList(count_data_exp, samples = data_for_DE_exp, genes = gene_names_df) 
 design <- model.matrix(~0+PDL+ox, data = y$samples)
@@ -120,7 +121,6 @@ library(fgsea)
 library(DESeq2)
 library(apeglm)
 library(msigdbr)
-       
        
 counts<-count_data_exp
        
@@ -197,7 +197,7 @@ sapply(genes_and_score, length)
 # remove genes with no Entrez ID (isNA) 
 genes_and_score <- lapply(genes_and_score, function(x) x[!is.na(names(x))])
 sapply(genes_and_score, length)
-#drops down to 13765
+#drops down to 13784
 
 # remove genes with duplicated Entrez ID
 genes_and_score <- lapply(genes_and_score, function(x) {
