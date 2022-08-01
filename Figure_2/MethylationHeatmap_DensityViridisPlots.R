@@ -4,15 +4,35 @@ library(pheatmap)
 library(ggplot2)
 library(dplyr)
 
-#subset betas to PMD solo-WCGWs
-cell.line<-"AG06561"
-s<-subset(p,p$"subexperiment:ch1"=="Baseline profiling"&
-            p$"coriell_id:ch1"==cell.line&
-            p$"subculture:ch1"=="b")
-dim(s)
-s<-s[order(s$"population_doublings:ch1"),]
+#load methylation data
+library(GEOquery)
+library(purrr)
+Sys.setenv("VROOM_CONNECTION_SIZE" = 131072 * 100)
+g<-getGEO('GSE197512')
+p<-pData(g[[1]])
+betas <- as.data.frame(exprs(g[[1]]))
+dim(betas)
+#[1] 865918    372
+#beautify pdata
+p<-p[,c(1,2,48:56,58:60)]
+cols<-(as.character(map(strsplit(colnames(p), split = ":"), 1)))
+colnames(p)<-cols
 
+#subset samples to experiment of interest
+cell.line<-"AG06561"
+s<-subset(p,p$subexperiment=="Baseline profiling"&
+            p$coriell_id==cell.line&
+            p$subculture=="b")
+dim(s)
+s<-s[order(s$population_doublings),]
 b<-betas[,c(match(rownames(s),colnames(betas)))]
+#subset betas to PMD solo-WCGWs
+download.file('https://zwdzwd.s3.amazonaws.com/pmd/EPIC.comPMD.probes.tsv','./EPIC.comPMD.probes.tsv')
+EPIC.comPMD<-read.delim('EPIC.comPMD.probes.tsv',header=F)
+b<-subset(b,rownames(b)%in%EPIC.comPMD$V4)
+dim(b)
+#[1] 26732    15
+
 b$delta<-b[,ncol(b)]-b[,1]
 
 hi.me<-subset(b,b[,1]>0.7) 
@@ -51,7 +71,7 @@ dev.off()
 #Stably methylated/unmethylated groups
 dat<-as.data.frame(hi.me)
 dat<-dat[,-ncol(dat)]
-colnames(dat)<-s$"population_doublings:ch1"
+colnames(dat)<-s$population_doublings
 dat$CpG<-rownames(dat)
 mdat<-melt(dat,id.vars = 'CpG') 
 mdat$variable<-as.numeric(as.character(mdat$variable))
@@ -72,7 +92,7 @@ base_plot+stat_density_2d(
 #variable group, further split into quartile
 dat<-as.data.frame(var.me)
 dat<-dat[,-ncol(dat)]
-colnames(dat)<-s$"population_doublings:ch1"
+colnames(dat)<-s$population_doublings
 dat$CpG<-rownames(dat)
 #determine decile for starting methylation
 dat$ile<-ntile(dat[,1],4) 
