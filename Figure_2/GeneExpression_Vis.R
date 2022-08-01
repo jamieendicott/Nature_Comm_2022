@@ -5,6 +5,7 @@ library(ggplot2)
 library(edgeR)
 library(reshape2)
 library(sesame)
+library(dplyr)
 #import manifest data
 download.file('https://zhouserver.research.chop.edu/InfiniumAnnotation/20210615/EPIC/EPIC.hg38.manifest.gencode.v36.tsv.gz','./EPIC.hg38.manifest.gencode.v36.tsv.gz')
 manifest.hg38 <- read.delim("EPIC.hg38.manifest.gencode.v36.tsv.gz")
@@ -52,24 +53,24 @@ dev.off()
 #load methylation data
 #subset CpGs by those that are gene-associated
 solo.OL<-subset(manifest.hg38,manifest.hg38$probeID %in% CpGs$V4 & 
-                manifest.hg38$genesUniq!="NA")
-genes.OL<-subset(cpm,cpm$Uniq_syms %in% solo.OL$genesUniq)
+                manifest.hg38$genesUniq!="NA") 
+genes.OL<-subset(cpm,cpm$Uniq_syms %in% solo.OL$genesUniq) #1365 genes
 
 ##1 import methylation data
-g<-getGEO('GSE197512')
-p<-pData(g[[1]])
-betas <- as.data.frame(exprs(g[[1]]))
+g2<-getGEO('GSE197512')
+p2<-pData(g2[[1]])
+betas <- as.data.frame(exprs(g2[[1]]))
 dim(betas)
 #[1] 865918    372
 #beautify pdata
-p<-p[,c(1,2,48:56,58:60)]
-cols<-(as.character(map(strsplit(colnames(p), split = ":"), 1)))
-colnames(p)<-cols
+p2<-p2[,c(1,2,48:56,58:60)]
+cols<-(as.character(map(strsplit(colnames(p2), split = ":"), 1)))
+colnames(p2)<-cols
 
 ##2 Obtain regression coefficients by CpG, by cell type
 cell.line<-"AG11182" #AG21859
-samples<-subset(p, p$subexperiment=="Baseline profiling"&
-                  p$coriell_id==cell.line)
+samples<-subset(p2, p2$subexperiment=="Baseline profiling"&
+                  p2$coriell_id==cell.line)
 #order samples by advancing PDs
 samples<-samples[order(samples$population_doublings),]
 b<-betas[,c(match(samples$geo_accession,colnames(betas)))]
@@ -87,35 +88,29 @@ for (i in 1:length(lm)){
   B1[i] <- summary(fit)$coefficients["samples$population_doublings","Estimate"]
 }
 B1<-as.data.frame(B1)
-rownames(B1)<-rownames(b)
-B1$WA<-WAscore[c(match(rownames(B1),rownames(WAscore))),1]
-B1<-na.omit(B1)
+rownames(B1)<-rownames(b) #methylation change per PD
           
 
-a<-subset(solo.OL,solo.OL$probeID%in%rownames(b)) #1089 genes
-data_for_DE<-read.delim('/Users/Jamie.Endicott/Dropbox/working materials/2021.aging.PMD.resubmission/figures/RNAseq/combine.dataforDE.tsv',
-                        row.names = 1)
-raw_counts_df<-read.delim('RNAseq/raw_counts.tsv')
-cpm2<-cpm(raw_counts_df[,5:98])
-log2cpm<-cbind(raw_counts_df[,1:4],log2(cpm2+1))
-cell.line<-"AG11182" #AG21859
+a<-subset(solo.OL,solo.OL$probeID%in%rownames(b)) 
+          
 s2<-subset(p,p$subexperiment=="Baseline profiling" &
            p$coriell_id==cell.line)
-solo.normcounts.a<-log2cpm[,c(match(rownames(s2),colnames(log2cpm)))]
-solo.normcounts.a$Symbol<-log2cpm$Symbol
-
-solo.normcounts.a$avgz<-apply(solo.normcounts.a[,-ncol(solo.normcounts.a)],1,mean)
-
-a$avgexprs<-solo.normcounts.a[c(match(a$genesUniq,solo.normcounts.a$Symbol)),ncol(solo.normcounts.a)]
-b2$avgexprs<-a[c(match(rownames(b2),a$probeID)),ncol(a)]
+solo.ncts<-cpm[,c(match(s2$description,colnames(cpm)))]         
+solo.ncts$Symbol<-cpm$Symbol
+solo.ncts<-subset(solo.ncts,solo.ncts$Symbol%in%solo.OL$genesUniq) #1369
+solo.ncts$avgz<-apply(solo.ncts[,-ncol(solo.ncts)],1,mean) #calculate avg z score
+a<-subset(manifest.hg38,manifest.hg38$genesUniq%in%solo.ncts$Symbol&
+         manifest.hg38$probeID%in%CpGs$V4) #7351 cpgs
+a$avgexprs<-solo.ncts[c(match(a$genesUniq,solo.ncts$Symbol)),ncol(solo.ncts)]
+B1$avgexprs<-a[c(match(rownames(B1),a$probeID)),ncol(a)]
 
 #looking at discrete bins (quintiles)
-b2$e.ile<-ntile(b2$avgexprs,5)
-b2$e.ile<-as.factor(b2$e.ile)
-b2<-na.omit(b2) 
+B1$e.ile<-ntile(B1$avgexprs,5)
+B1$e.ile<-as.factor(B1$e.ile)
+B1<-na.omit(B1) 
 
 pdf(paste0(cell.line,'.violin.B1vExprs.pdf'))
-ggplot(data=b2,aes(x=e.ile,y=B1,fill=e.ile))+geom_violin()+
+ggplot(data=B1,aes(x=e.ile,y=B1,fill=e.ile))+geom_violin()+
   geom_boxplot(width=0.1, color="grey", alpha=0.5)+
   theme_bw()+
   ggtitle(paste0(cell.line,' slope vs expression quintile'))+
