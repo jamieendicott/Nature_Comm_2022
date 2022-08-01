@@ -1,23 +1,33 @@
 #Heatmap of AG21859 PMD solo-WCGWs, showing reproducibility between replicates/subcultures 
 library(pheatmap)
 library(viridisLite)
+#load methylation data
+library(GEOquery)
+library(purrr)
+Sys.setenv("VROOM_CONNECTION_SIZE" = 131072 * 100)
+g<-getGEO('GSE197512')
+p<-pData(g[[1]])
+betas <- as.data.frame(exprs(g[[1]]))
+dim(betas)
+#[1] 865918    372
+#beautify pdata
+p<-p[,c(1,2,48:56,58:60)]
+cols<-(as.character(map(strsplit(colnames(p), split = ":"), 1)))
+colnames(p)<-cols
 
-#download manifest of PMD solo-WCGWs
+#subset betas to PMD solo-WCGWs
 download.file('https://zwdzwd.s3.amazonaws.com/pmd/EPIC.comPMD.probes.tsv','./EPIC.comPMD.probes.tsv')
 EPIC.comPMD<-read.delim('EPIC.comPMD.probes.tsv',header=F)
-
-betas<-read.csv('processed.betas.csv',check.names=F,row.names=1) 
-#subset betas to only PMD solo-WCGWs
 b<-subset(betas,rownames(betas)%in%EPIC.comPMD$V4)
-samples<-read.csv('samples.csv',row.names=1)
-s<-subset(samples,samples$characteristics..subexperiment=="Baseline profiling" &
-          samples$characteristics..CORIELL_ID=="AG21859")
+dim(b)
+#[1] 26732   372
+s<-subset(p,p$subexperiment=="Baseline profiling" &
+          p$coriell_id=="AG21859")
 #sort by subculture then PDs
-s<-s[order( s[,15], s[,16] ),]
-#move first timepoint to first row
-s2<-rbind(s[40,],s[-40,])
+s<-s[order( s[,13], s[,12] ),]
 
-b<-b[,c(match(rownames(s2),colnames(b)))]
+
+b<-b[,c(match(rownames(s),colnames(b)))]
 b<-na.omit(b)
 b2<-b[order(b[,1],decreasing = TRUE),]
 
