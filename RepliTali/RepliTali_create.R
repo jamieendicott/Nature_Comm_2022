@@ -15,20 +15,14 @@ p<-p[,c(1,2,48:56,58:60)]
 cols<-(as.character(map(strsplit(colnames(p), split = ":"), 1)))
 colnames(p)<-cols
 
-cols<-c(AG21837="coral",AG06561="brown",
-        AG11182="plum4",AG11546="darkseagreen4",
-        AG16146="goldenrod",AG21839="darkslateblue",
-        AG21859="darkslategray3")
-
 download.file('https://zwdzwd.s3.amazonaws.com/pmd/EPIC.comPMD.probes.tsv','./EPIC.comPMD.probes.tsv')     
 man<-read.table('EPICnonCGI.context.manifest.tsv') 
 
-samples<-subset(p,p$subxperiment=="Baseline profiling")
-
-
-#[1] 865918    182
-
+samples<-subset(p,p$subexperiment=="Baseline profiling")
+samples$population_doublings<-as.numeric(samples$population_doublings)
 b<-betas[,c(match(samples$geo_accession,colnames(betas)))]
+dim(b)
+#[1] 865918    182
 
 #Only including PMD probes in RepliTali, subset
 probeset<-"PMD"
@@ -38,7 +32,7 @@ dim(probes)
 betas<-subset(b,rownames(b)%in%probes$probeID)
 
 ##Create normalization model based on chronologically youngest cell line AG06561
-samples.651<-subset(samples,samples$coriell_ID=="AG06561")
+samples.651<-subset(samples,samples$coriell_id=="AG06561")
 betas.651<-betas[,c(match(samples.651$geo_accession,colnames(betas)))]
 betas.651<-na.omit(betas.651)
 dim(betas.651)
@@ -61,7 +55,7 @@ norm.PDL<-apply(norm.PDL,2,function(x) sum(x,na.rm=T) +norm651$Value[1])
 samples$norm.PDL<-(norm.PDL)
 
 #for all subsequent timepoints calculate delta PDL using observed PDL
-X <- split(samples, samples$coriell_ID)
+X <- split(samples, samples$coriell_id)
 for( i in seq_along(X)){
   X[[i]]$deltaPDL<-(X[[i]]$population_doublings-X[[i]]$population_doublings[1])
   X[[i]]$adj651PDL<-(X[[i]]$deltaPDL+X[[i]]$norm.PDL[1])
@@ -103,9 +97,14 @@ rtrain.samples$set<-"TRAINING"
 rtest.samples$set<-"TEST"
 dat<-rbind(rtrain.samples,rtest.samples)
 dat$replitali<-as.numeric(dat$replitali)
-
+                
+cols<-c(AG21837="coral",AG06561="brown",
+        AG11182="plum4",AG11546="darkseagreen4",
+        AG16146="goldenrod",AG21839="darkslateblue",
+        AG21859="darkslategray3")
+                
 g<-ggplot(data=transform(dat,set=factor(set,levels=c("TRAINING","TEST"))),aes(x=adj651PDL,y=replitali))
-g+geom_point(aes(col=coriell_ID),size=1.5,alpha=0.6)+theme_bw()+
+g+geom_point(aes(col=coriell_id),size=1.5,alpha=0.6)+theme_bw()+
   scale_color_manual(values=cols)+
   geom_smooth(method='lm', alpha = 0.4,col='gray')+
   xlab("Observed PDs, 651 enet adjusted P1") + ylab("Predicted PDs")+facet_wrap(~set)
