@@ -37,9 +37,15 @@ all<-rbind(PMD.SCGS.social,HMD.SCGS.social,
            PMD.WCGW.solo,HMD.WCGW.solo)
 
 ##Load in methylation data
-betas<-g.data
-#beautify pdata...
-p<-p[,c(1,2,48:56,58:61)] #can trim further if desired
+library(GEOquery)
+Sys.setenv("VROOM_CONNECTION_SIZE" = 131072 * 100)
+g<-getGEO('GSE197512')
+p<-pData(g[[1]])
+betas <- as.data.frame(exprs(g[[1]]))
+dim(betas)
+#[1] 865918    372
+#beautify pdata
+p<-p[,c(1,2,48:56,58:60)]
 cols<-(as.character(map(strsplit(colnames(p), split = ":"), 1)))
 colnames(p)<-cols
 
@@ -47,7 +53,7 @@ cell.line<-"AG21839"
 samples<-subset(p, p$subexperiment=="Baseline profiling"&
                    p$coriell_id==cell.line)
 #order samples by advancing PDs
-samples<-samples[order(population_doublings),]
+samples<-samples[order(samples$population_doublings),]
 b<-betas[,c(match(samples$geo_accession,colnames(betas)))]
 dim(b)
 #[1] 865918     27
