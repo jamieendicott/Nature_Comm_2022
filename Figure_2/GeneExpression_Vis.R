@@ -5,7 +5,6 @@ library(ggplot2)
 library(edgeR)
 library(reshape2)
 library(sesame)
-
 #import manifest data
 download.file('https://zhouserver.research.chop.edu/InfiniumAnnotation/20210615/EPIC/EPIC.hg38.manifest.gencode.v36.tsv.gz','./EPIC.hg38.manifest.gencode.v36.tsv.gz')
 manifest.hg38 <- read.delim("EPIC.hg38.manifest.gencode.v36.tsv.gz")
@@ -48,6 +47,44 @@ pdf('ADAMTS2.CARD11.log2cpm.pdf',height = 4,width = 4)
 ggplot(data=s2,aes(x=variable,y=value))+geom_boxplot()+
   theme_bw()+facet_wrap(~coriell_id,scales = 'free_y')+ylim(0,10)
 dev.off()
+
+#Plot methylation change/PD vs gene expression quintile
+a<-subset(solo.OL,solo.OL$probeID%in%rownames(b)) #1089 genes
+data_for_DE<-read.delim('/Users/Jamie.Endicott/Dropbox/working materials/2021.aging.PMD.resubmission/figures/RNAseq/combine.dataforDE.tsv',
+                        row.names = 1)
+raw_counts_df<-read.delim('RNAseq/raw_counts.tsv')
+cpm2<-cpm(raw_counts_df[,5:98])
+log2cpm<-cbind(raw_counts_df[,1:4],log2(cpm2+1))
+
+s2<-subset(data_for_DE,data_for_DE$genotype==cell.line&data_for_DE$treatment=="normoxic")  #only want expression for certain cell line
+solo.normcounts.a<-log2cpm[,c(match(rownames(s2),colnames(log2cpm)))]
+solo.normcounts.a$Symbol<-log2cpm$Symbol
+
+solo.normcounts.a$avgz<-apply(solo.normcounts.a[,-ncol(solo.normcounts.a)],1,mean)
+
+a$avgexprs<-solo.normcounts.a[c(match(a$genesUniq,solo.normcounts.a$Symbol)),ncol(solo.normcounts.a)]
+b2$avgexprs<-a[c(match(rownames(b2),a$probeID)),ncol(a)]
+
+#looking at discrete bins (quintiles)
+b2$e.ile<-ntile(b2$avgexprs,5)
+b2$e.ile<-as.factor(b2$e.ile)
+b2<-na.omit(b2) 
+
+
+pdf(paste0(cell.line,'.violin.B1vExprs.pdf'))
+ggplot(data=b2,aes(x=e.ile,y=B1,fill=e.ile))+geom_violin()+
+  geom_boxplot(width=0.1, color="grey", alpha=0.5)+
+  theme_bw()+
+  ggtitle(paste0(cell.line,' slope vs expression quintile'))+
+  scale_fill_manual(values = alpha(c("steelblue2","cyan","olivedrab2","orange","red2"),0.2))+
+  xlab('Gene expression quintile')+ylab('PMD solo-WCGW methylation change per PD')
+dev.off()
+
+kruskal.test(b2$B1~b2$e.ile)
+#Kruskal-Wallis chi-squared = 568.76, df = 4, p-value < 2.2e-16
+#Kruskal-Wallis chi-squared = 489.97, df = 4, p-value < 2.2e-16
+
+
 
 #Methylation heatmaps (SeSaMe)
 #load methylation data
