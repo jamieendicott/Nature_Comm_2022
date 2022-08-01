@@ -1,22 +1,34 @@
 library('glmnet')
 library('coefplot')
 library('ggplot2')
+#load methylation data
+library(GEOquery)
+library(purrr)
+Sys.setenv("VROOM_CONNECTION_SIZE" = 131072 * 100)
+g<-getGEO('GSE197512')
+p<-pData(g[[1]])
+betas <- as.data.frame(exprs(g[[1]]))
+dim(betas)
+#[1] 865918    372
+#beautify pdata
+p<-p[,c(1,2,48:56,58:60)]
+cols<-(as.character(map(strsplit(colnames(p), split = ":"), 1)))
+colnames(p)<-cols
 
 cols<-c(AG21837="coral",AG06561="brown",
         AG11182="plum4",AG11546="darkseagreen4",
         AG16146="goldenrod",AG21839="darkslateblue",
         AG21859="darkslategray3")
-        
+
+download.file('https://zwdzwd.s3.amazonaws.com/pmd/EPIC.comPMD.probes.tsv','./EPIC.comPMD.probes.tsv')     
 man<-read.table('EPICnonCGI.context.manifest.tsv') 
 
-samples<-read.csv('compiled.samples.batches.csv')
-samples<-subset(samples,samples$Experiment=="Baseline profiling")
+samples<-subset(p,p$subxperiment=="Baseline profiling")
 
-betas<-read.csv('Baseline profiling all.betas.csv',check.names=FALSE,row.names=1)
-dim(betas)
+
 #[1] 865918    182
 
-b<-betas[,c(match(samples$EPIC.ID,colnames(betas)))]
+b<-betas[,c(match(samples$geo_accession,colnames(betas)))]
 
 #Only including PMD probes in RepliTali, subset
 probeset<-"PMD"
@@ -26,11 +38,11 @@ dim(probes)
 betas<-subset(b,rownames(b)%in%probes$probeID)
 
 ##Create normalization model based on chronologically youngest cell line AG06561
-samples.651<-subset(samples,samples$Coriell.ID=="AG06561")
-betas.651<-betas[,c(match(samples.651$EPIC.ID,colnames(betas)))]
+samples.651<-subset(samples,samples$coriell_ID=="AG06561")
+betas.651<-betas[,c(match(samples.651$geo_accession,colnames(betas)))]
 betas.651<-na.omit(betas.651)
 dim(betas.651)
-y.651<-paste(samples.651$Total.PDL)
+y.651<-paste(samples.651$population_doublings)
 y.651<-as.numeric(y.651)
 y.651
 x.651<-t(betas.651)
@@ -49,9 +61,9 @@ norm.PDL<-apply(norm.PDL,2,function(x) sum(x,na.rm=T) +norm651$Value[1])
 samples$norm.PDL<-(norm.PDL)
 
 #for all subsequent timepoints calculate delta PDL using observed PDL
-X <- split(samples, samples$Coriell.ID)
+X <- split(samples, samples$coriell_ID)
 for( i in seq_along(X)){
-  X[[i]]$deltaPDL<-(X[[i]]$Total.PDL-X[[i]]$Total.PDL[1])
+  X[[i]]$deltaPDL<-(X[[i]]$population_doublings-X[[i]]$population_doublings[1])
   X[[i]]$adj651PDL<-(X[[i]]$deltaPDL+X[[i]]$norm.PDL[1])
 } 
 X2<-do.call("rbind", X)
@@ -60,9 +72,9 @@ X2<-do.call("rbind", X)
 set.seed(12345)
 betas<-na.omit(betas) #critical step
 rtrain.betas<-betas[,sample(ncol(betas),122)] #2:1 split, 60 samples in test set
-rtrain.samples<-X2[c(match(colnames(rtrain.betas),X2$EPIC.ID)),]
-rtest.samples<-subset(X2,!(X2$EPIC.ID%in%colnames(rtrain.betas)))
-rtest.betas<-betas[,c(match(rtest.samples$EPIC.ID,colnames(betas)))]
+rtrain.samples<-X2[c(match(colnames(rtrain.betas),X2$geo_accession)),]
+rtest.samples<-subset(X2,!(X2$geo_accession%in%colnames(rtrain.betas)))
+rtest.betas<-betas[,c(match(rtest.samples$geo_accession,colnames(betas)))]
 
 x.r<-t(rtrain.betas)
 y.r<-paste(rtrain.samples$adj651PDL)
@@ -92,8 +104,8 @@ rtest.samples$set<-"TEST"
 dat<-rbind(rtrain.samples,rtest.samples)
 dat$replitali<-as.numeric(dat$replitali)
 
-g<-ggplot(data=transform(dat,set=factor(set,levels=c("TRAINING","TEST"))),aes(x=adj651PDL,y=mitoage))
-g+geom_point(aes(col=Coriell.ID),size=1.5,alpha=0.6)+theme_bw()+
+g<-ggplot(data=transform(dat,set=factor(set,levels=c("TRAINING","TEST"))),aes(x=adj651PDL,y=replitali))
+g+geom_point(aes(col=coriell_ID),size=1.5,alpha=0.6)+theme_bw()+
   scale_color_manual(values=cols)+
   geom_smooth(method='lm', alpha = 0.4,col='gray')+
   xlab("Observed PDs, 651 enet adjusted P1") + ylab("Predicted PDs")+facet_wrap(~set)
