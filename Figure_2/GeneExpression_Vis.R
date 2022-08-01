@@ -48,15 +48,59 @@ ggplot(data=s2,aes(x=variable,y=value))+geom_boxplot()+
   theme_bw()+facet_wrap(~coriell_id,scales = 'free_y')+ylim(0,10)
 dev.off()
 
-#Plot methylation change/PD vs gene expression quintile
+##Plot methylation change/PD vs gene expression quintile
+#load methylation data
+#subset CpGs by those that are gene-associated
+solo.OL<-subset(manifest.hg38,manifest.hg38$probeID %in% CpGs$V4 & 
+                manifest.hg38$genesUniq!="NA")
+genes.OL<-subset(cpm,cpm$Uniq_syms %in% solo.OL$genesUniq)
+
+##1 import methylation data
+g<-getGEO('GSE197512')
+p<-pData(g[[1]])
+betas <- as.data.frame(exprs(g[[1]]))
+dim(betas)
+#[1] 865918    372
+#beautify pdata
+p<-p[,c(1,2,48:56,58:60)]
+cols<-(as.character(map(strsplit(colnames(p), split = ":"), 1)))
+colnames(p)<-cols
+
+##2 Obtain regression coefficients by CpG, by cell type
+cell.line<-"AG11182" #AG21859
+samples<-subset(p, p$subexperiment=="Baseline profiling"&
+                  p$coriell_id==cell.line)
+#order samples by advancing PDs
+samples<-samples[order(samples$population_doublings),]
+b<-betas[,c(match(samples$geo_accession,colnames(betas)))]
+dim(b)
+#Regress methylation across PMD solo-WCGWs to population doublings
+b<-na.omit(subset(b,rownames(b)%in%CpGs$V4))
+samples$population_doublings<-as.numeric(samples$population_doublings)
+lm<-apply(b,1,function(x) lm(x~samples$population_doublings)) 
+fit<-lm[[1]]
+names(summary(fit))
+head(fit)$coefficients
+B1<-vector(mode='numeric',length=length(lm))
+for (i in 1:length(lm)){
+  fit<-lm[[i]]
+  B1[i] <- summary(fit)$coefficients["samples$population_doublings","Estimate"]
+}
+B1<-as.data.frame(B1)
+rownames(B1)<-rownames(b)
+B1$WA<-WAscore[c(match(rownames(B1),rownames(WAscore))),1]
+B1<-na.omit(B1)
+          
+
 a<-subset(solo.OL,solo.OL$probeID%in%rownames(b)) #1089 genes
 data_for_DE<-read.delim('/Users/Jamie.Endicott/Dropbox/working materials/2021.aging.PMD.resubmission/figures/RNAseq/combine.dataforDE.tsv',
                         row.names = 1)
 raw_counts_df<-read.delim('RNAseq/raw_counts.tsv')
 cpm2<-cpm(raw_counts_df[,5:98])
 log2cpm<-cbind(raw_counts_df[,1:4],log2(cpm2+1))
-
-s2<-subset(data_for_DE,data_for_DE$genotype==cell.line&data_for_DE$treatment=="normoxic")  #only want expression for certain cell line
+cell.line<-"AG11182" #AG21859
+s2<-subset(p,p$subexperiment=="Baseline profiling" &
+           p$coriell_id==cell.line)
 solo.normcounts.a<-log2cpm[,c(match(rownames(s2),colnames(log2cpm)))]
 solo.normcounts.a$Symbol<-log2cpm$Symbol
 
@@ -69,7 +113,6 @@ b2$avgexprs<-a[c(match(rownames(b2),a$probeID)),ncol(a)]
 b2$e.ile<-ntile(b2$avgexprs,5)
 b2$e.ile<-as.factor(b2$e.ile)
 b2<-na.omit(b2) 
-
 
 pdf(paste0(cell.line,'.violin.B1vExprs.pdf'))
 ggplot(data=b2,aes(x=e.ile,y=B1,fill=e.ile))+geom_violin()+
