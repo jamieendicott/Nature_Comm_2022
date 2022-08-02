@@ -68,7 +68,7 @@ cols<-(as.character(map(strsplit(colnames(p2), split = ":"), 1)))
 colnames(p2)<-cols
 
 ##2 Obtain regression coefficients by CpG, by cell type
-cell.line<-"AG11182" #AG21859
+cell.line<-"AG21859" # AG11182
 samples<-subset(p2, p2$subexperiment=="Baseline profiling"&
                   p2$coriell_id==cell.line)
 #order samples by advancing PDs
@@ -103,11 +103,11 @@ a<-subset(manifest.hg38,manifest.hg38$genesUniq%in%solo.ncts$Symbol&
          manifest.hg38$probeID%in%CpGs$V4) #7351 cpgs
 a$avgexprs<-solo.ncts[c(match(a$genesUniq,solo.ncts$Symbol)),ncol(solo.ncts)]
 B1$avgexprs<-a[c(match(rownames(B1),a$probeID)),ncol(a)]
-
+B1<-na.omit(B1) 
 #looking at discrete bins (quintiles)
 B1$e.ile<-ntile(B1$avgexprs,5)
 B1$e.ile<-as.factor(B1$e.ile)
-B1<-na.omit(B1) 
+
 
 pdf(paste0(cell.line,'.violin.B1vExprs.pdf'))
 ggplot(data=B1,aes(x=e.ile,y=B1,fill=e.ile))+geom_violin()+
@@ -118,9 +118,8 @@ ggplot(data=B1,aes(x=e.ile,y=B1,fill=e.ile))+geom_violin()+
   xlab('Gene expression quintile')+ylab('PMD solo-WCGW methylation change per PD')
 dev.off()
 
-kruskal.test(b2$B1~b2$e.ile)
-#Kruskal-Wallis chi-squared = 568.76, df = 4, p-value < 2.2e-16
-#Kruskal-Wallis chi-squared = 489.97, df = 4, p-value < 2.2e-16
+kruskal.test(B1$B1~B1$e.ile)
+
 
 
 
