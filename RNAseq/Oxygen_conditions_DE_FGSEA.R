@@ -19,9 +19,14 @@ library(purrr)
 Sys.setenv("VROOM_CONNECTION_SIZE" = 131072 * 100)
 g<-getGEO('GSE197471')
 p<-(pData(g[[1]]))
+#beautify pdata
+p<-p[,c(1,2,27,55:60,62:64)]
+p$population_doublings<-as.numeric(p$population_doublings)
+cols<-(as.character(map(strsplit(colnames(p), split = ":"), 1)))
+colnames(p)<-cols
 
 #note: this is ALL samples, not just oxygen culture condition experiment. filter:
-p<-subset(p,p$'subexperiment:ch1'=="Reduced oxygen")
+p<-subset(p,p$subexperiment=="Reduced oxygen")
 
 #remove senescence timepoints (GSM5918143, GSM5918151)
 data_for_DE_exp<-subset(p,p$geo_accession!="GSM5918143" &
