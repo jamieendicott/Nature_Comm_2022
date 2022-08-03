@@ -21,8 +21,9 @@ EPIC.comPMD<-read.delim('EPIC.comPMD.probes.tsv',header=F)
 b<-subset(betas,rownames(betas)%in%EPIC.comPMD$V4)
 dim(b)
 #[1] 26732   372
+cell.line<-"AG21859"
 s<-subset(p,p$subexperiment=="Baseline profiling" &
-          p$coriell_id=="AG21859")
+          p$coriell_id==cell.line) #can change to vis other subsexperiments, cell lines, etc
 #sort by subculture then PDs
 s<-s[order( s[,13], s[,12] ),]
 
@@ -37,6 +38,6 @@ p<-pheatmap(b2,cluster_cols = F, cluster_rows =F,
          color=turbo(100)
 )
 
-pdf('hm.AG21859.subs.pdf')
+pdf(paste0(cell.line,'.hm.pdf'))
 p
 dev.off()
