@@ -1,10 +1,13 @@
 ##Links to other DNA methylation-based clocks used in manuscript
 
 #1. EpiTOC2 (includes EpiTOC1 and hypoclock)
+#Teschendorff, AE, Genome Medicine 2020
 #https://zenodo.org/record/2632938#.Yup3juzML0s
 
 #2. EpiCMIT
+#Duran-Ferrer, M, et al, Nature Cancer 2020
 #https://github.com/Duran-FerrerM/Pan-B-cell-methylome
 
 #3. MiAge
+#Youn, A, & Wang, S, Epigenetics, 2018
 #http://www.columbia.edu/~sw2206/softwares.htm
