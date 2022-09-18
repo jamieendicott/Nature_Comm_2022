@@ -33,7 +33,7 @@ data_for_DE_exp<-subset(p,p$geo_accession!="GSM5918143" &
             p$geo_accession!="GSM5918151")
 
 #simplify
-data_for_DE_exp<-data_for_DE_exp[,c(56,62,27)]
+data_for_DE_exp<-data_for_DE_exp[,c(5,13,3)]
 data_for_DE_exp$ox<-as.factor(c(rep("ambient",7,),rep("low",7)))
 colnames(data_for_DE_exp)<-c("type","PDL","sample","ox")
 data_for_DE_exp$PDL<-as.numeric(data_for_DE_exp$PDL)
