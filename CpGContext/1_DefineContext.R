@@ -19,7 +19,7 @@ g<-GRanges(seqnames = EPIC.nonCGI$CpG_chrm,
 g$names <- EPIC.nonCGI$probeID
 
 ##PMD vs HMD annotation
-download.file('https://zwdzwd.s3.amazonaws.com/pmd/PMD_coordinates_hg19.bed.gz','./PMD_coordinates_hg19.bed.gz')
+download.file('https://zhouserver.research.chop.edu/GenomeAnnotation/hg19/PMD_coordinates_hg19.bed.gz','./PMD_coordinates_hg19.bed.gz')
 PMD_coordinates_hg19.bed <- read.delim("PMD_coordinates_hg19.bed.gz", header=FALSE, stringsAsFactors=FALSE)
 PMD<-subset(PMD_coordinates_hg19.bed,PMD_coordinates_hg19.bed$V6=='commonPMD') #13127 PMDs
 PMD.g<-GRanges(seqnames = PMD$V1,
