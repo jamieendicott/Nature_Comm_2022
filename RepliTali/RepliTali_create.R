@@ -15,7 +15,6 @@ p<-p[,c(1,2,48:56,58:60)]
 cols<-(as.character(map(strsplit(colnames(p), split = ":"), 1)))
 colnames(p)<-cols
 
-download.file('https://zwdzwd.s3.amazonaws.com/pmd/EPIC.comPMD.probes.tsv','./EPIC.comPMD.probes.tsv')     
 man<-read.table('EPICnonCGI.context.manifest.tsv') 
 
 samples<-subset(p,p$subexperiment=="Baseline profiling")
