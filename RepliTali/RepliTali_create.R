@@ -15,7 +15,7 @@ p<-p[,c(1,2,48:56,58:60)]
 cols<-(as.character(map(strsplit(colnames(p), split = ":"), 1)))
 colnames(p)<-cols
 
-man<-read.table('EPICnonCGI.context.manifest.tsv') 
+man<-read.table('EPICnonCGI.context.manifest.tsv') #created in /CpGContext/1_DefineContext.R
 
 samples<-subset(p,p$subexperiment=="Baseline profiling")
 samples$population_doublings<-as.numeric(samples$population_doublings)
