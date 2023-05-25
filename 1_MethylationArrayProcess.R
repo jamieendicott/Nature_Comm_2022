@@ -6,7 +6,7 @@ library(data.table)
 #need to cache sesame if newly installed
 
 idat_dir = ('./idats') #path to idats
-betas = openSesame(idat.dir)
+betas = openSesame(idat_dir)
 #opensesame command default is p 0.05, tuning this to 0.1 is recommended but stringent cutoff is acceptable here
 dim(betas)
 
